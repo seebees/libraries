@@ -5,7 +5,8 @@ trait Event {
 }
 
 class SampleEvent extends Event {
-  constructor(source: object) 
+  constructor(source: object)
+    ensures this.source == source
   {
     this.source := source;
   }
@@ -21,6 +22,17 @@ class {:separated} History {
     events := [];
   }
 
+  predicate HasNoDuplicates()
+    reads this
+  {
+    forall i, j
+      ::
+        && 0 <= i < |events|
+        && 0 <= j < |events|
+        && i != j
+        ==> events[i].source != events[j].source
+  }
+
   twostate predicate Invariant()
     reads this
   {
@@ -29,9 +41,17 @@ class {:separated} History {
     // ONLY when assuming the post-condition of methods...
     // && var others := events[|old(events)|..];
     // && forall other <- others :: other.source != <my source>
+
+    // I think that this is even stronger than what you wanted
+    // It says that at the end, nothing can be the same at all.
+    // Now what is required is that you have to prove
+    // that whatever you want to put in is not already in there
+    && HasNoDuplicates()
   }
 
   method AddEvent(e: Event)
+    requires HasNoDuplicates()
+    requires forall e' <- events :: e.source != e'.source
     modifies this
     ensures Invariant()
 
@@ -69,5 +89,10 @@ method HistoryClient() {
   // Could we support an invariant which is interpreted slightly differently
   // between the contexts of ensuring it on a class method
   // vs. assuming it after an external call to that method?
-  assert |set e <- history.events :: e.source == source| == 1; // Error: assertion might not hold
+  // assert |set e <- history.events :: e.source == source| == 1; // Error: assertion might not hold
+
+  // cardinality of sets is hard
+  // better to just say "Only this one yo!".
+  // Another issue is the above is a set<bool>, but this is what you mean right?
+  assert (set e <- history.events | e.source == source :: e) == {event};
 }
