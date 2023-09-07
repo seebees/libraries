@@ -25,8 +25,8 @@ class {:separated} History {
     reads this
   {
     && old(events) <= events
-    // We'd also like to be able to say this ONLY when assuming
-    // the post-condition of methods...
+    // We'd also like to be able to say this kind of thing
+    // ONLY when assuming the post-condition of methods...
     // && var others := events[|old(events)|..];
     // && forall other <- others :: other.source != <my source>
   }
@@ -35,11 +35,12 @@ class {:separated} History {
     modifies this
     ensures Invariant()
 
-    // Sequential version - will verify, but not be true in concurrent mode.
+    // Sequential version - will verify against the body of the method,
+    // but not be true in concurrent mode.
     // ensures events == old(events) + [e]
 
-    // This is what clients should assume externally instead in concurrent mode.
-    // Follows from the combination of the sequential ensures plus the twostate invariant
+    // This is the weakened form that clients assume externally instead.
+    // Follows from the combination of the sequential ensures plus the twostate invariant.
     ensures exists others :: events == old(events) + [e] + others
   {
     events := events + [e];
@@ -61,12 +62,12 @@ method HistoryClient() {
 
   assert event in history.events;
 
-  // This is what we want, but can't prove.
+  // This is what we want, but can't yet prove.
   // Can we somehow express in the Invariant that the other events
   // (which other concurrent executions may have added in this context)
   // cannot have the same source?
   // Could we support an invariant which is interpreted slightly differently
   // between the contexts of ensuring it on a class method
   // vs. assuming it after an external call to that method?
-  assert |set e <- history.events :: e.source == source| == 1;
+  assert |set e <- history.events :: e.source == source| == 1; // Error: assertion might not hold
 }
